@@ -1,0 +1,26 @@
+<!-- Utils.html -->
+<script>
+    /** Mostrar feedback de éxito o error */
+    function mostrarMensaje(mensaje, tipo) {
+      const div = document.getElementById('mensaje') || document.querySelector('.mensaje-feedback');
+      if (!div) return;
+      div.textContent = mensaje;
+      div.className = tipo === 'success' ? 'success' : 'error';
+      div.style.display = 'block';
+      // Ocultar tras 4 segundos
+      setTimeout(() => div.style.display = 'none', 4000);
+    }
+  
+    /** Mostrar loader si existe */
+    function mostrarLoader() {
+      const loader = document.querySelector('.loader');
+      if (loader) loader.style.display = 'block';
+    }
+  
+    /** Ocultar loader */
+    function ocultarLoader() {
+      const loader = document.querySelector('.loader');
+      if (loader) loader.style.display = 'none';
+    }
+  </script>
+  

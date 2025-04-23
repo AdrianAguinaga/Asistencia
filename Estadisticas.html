@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <base target="_top">
+  <?!= include("CSS"); ?>
+  <?!= include("Utils"); ?>
+  <script src="https://www.gstatic.com/charts/loader.js"></script>
+  <title>Estadísticas de Asistencia</title>
+</head>
+<body>
+  <div class="container">
+    <h2>📊 Estadísticas de Asistencia</h2>
+
+    <!-- Loader y mensaje error -->
+    <div class="loader"></div>
+    <div id="mensaje" class="mensaje-feedback"></div>
+
+    <!-- Gráficas y resúmenes -->
+    <div class="form-group">
+      <h3>Asistencia Últimos 7 Días</h3>
+      <div id="chartSemana"></div>
+    </div>
+    <div class="form-group">
+      <h3>Resumen Últimos 7 Días</h3>
+      <div id="resumenSemana"></div>
+    </div>
+    <div class="form-group">
+      <h3>Histórico General</h3>
+      <div id="chartHistorico"></div>
+    </div>
+    <div class="form-group">
+      <h3>Concentrado Histórico</h3>
+      <div id="resumenHistorico"></div>
+    </div>
+
+    <!-- Enlace robusto de regreso al index -->
+    <div style="text-align:center; margin-top:20px;">
+      <a href="<?= ScriptApp.getService().getUrl() ?>" class="boton-uabc">← Volver al Registro</a>
+    </div>
+  </div>
+
+  <script>
+    function iniciar() {
+      mostrarLoader();
+      google.charts.load('current',{packages:['corechart']});
+      google.charts.setOnLoadCallback(cargarDatos);
+    }
+
+    function cargarDatos() {
+      google.script.run
+        .withSuccessHandler(datos => {
+          ocultarLoader();
+          dibujarSemana(datos.semana);
+          mostrarResumenSemana(datos.semana);
+          dibujarHistorico(datos.historico);
+          mostrarResumenHistorico(datos.historico);
+        })
+        .withFailureHandler(err => {
+          ocultarLoader();
+          mostrarMensaje('Error al cargar estadísticas: ' + err, 'error');
+        })
+        .obtenerEstadisticasCompletas();
+    }
+
+    function dibujarSemana(array) {
+      if (!array || !array.length) return;
+      const data = new google.visualization.DataTable();
+      data.addColumn('string','Fecha');
+      data.addColumn('number','Asistencias');
+      array.forEach(r=>data.addRow([r.fecha,r.total]));
+      const chart = new google.visualization.LineChart(document.getElementById('chartSemana'));
+      chart.draw(data, {hAxis:{title:'Fecha'},vAxis:{title:'Asistencias',minValue:0},legend:'none'});
+    }
+
+    function mostrarResumenSemana(array) {
+      if (!array || !array.length) return document.getElementById('resumenSemana').textContent='Sin datos.';
+      const total = array.reduce((a,b)=>a+b.total,0);
+      const max = Math.max(...array.map(r=>r.total));
+      const diaMax = array.find(r=>r.total===max).fecha;
+      document.getElementById('resumenSemana').innerHTML=
+        `Total: <strong>${total}</strong><br>Día máx.: <strong>${diaMax}</strong> (${max})`;
+    }
+
+    function dibujarHistorico(array) {
+      if (!array || !array.length) return;
+      const data = new google.visualization.DataTable();
+      data.addColumn('string','Fecha');
+      data.addColumn('number','Asistencias');
+      array.forEach(r=>data.addRow([r.fecha,r.total]));
+      const chart = new google.visualization.LineChart(document.getElementById('chartHistorico'));
+      chart.draw(data,{hAxis:{title:'Fecha'},vAxis:{title:'Asistencias',minValue:0},legend:'none'});
+    }
+
+    function mostrarResumenHistorico(array) {
+      if (!array || !array.length) return document.getElementById('resumenHistorico').textContent='Sin datos.';
+      const total = array.reduce((a,b)=>a+b.total,0);
+      const prom = (total/array.length).toFixed(1);
+      const max = Math.max(...array.map(r=>r.total));
+      const diaMax = array.find(r=>r.total===max).fecha;
+      document.getElementById('resumenHistorico').innerHTML=
+        `Total: <strong>${total}</strong><br>Promedio: <strong>${prom}</strong><br>Día máx.: <strong>${diaMax}</strong> (${max})`;
+    }
+
+    // Inicia proceso al cargar
+    window.onload = iniciar;
+  </script>
+</body>
+</html>

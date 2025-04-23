@@ -1,0 +1,173 @@
+<!-- CSS.html -->
+<style>
+    /* ===================== */
+    /* Variables de color       */
+    /* ===================== */
+    :root {
+      --uabc-verde: #1C6B3C;
+      --uabc-amarillo: #FFB800;
+      --uabc-verde-claro: #c8e6c9;
+      --uabc-blanco: #ffffff;
+      --uabc-gris: #4a5568;
+    }
+    
+    /* ===================== */
+    /* Reset y estilos base   */
+    /* ===================== */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--uabc-verde);
+      color: var(--uabc-gris);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* ===================== */
+    /* Contenedores           */
+    /* ===================== */
+    .container, .contenedor-principal {
+      background: var(--uabc-blanco);
+      border-radius: 12px;
+      padding: 25px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      margin: auto;
+      position: relative;
+    }
+    
+    /* ===================== */
+    /* Encabezados            */
+    /* ===================== */
+    h2, h3 {
+      margin-top: 0;
+      color: var(--uabc-verde);
+      text-align: center;
+    }
+    
+    /* ===================== */
+    /* Formularios            */
+    /* ===================== */
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: var(--uabc-gris);
+    }
+    input[type="text"], input[type="email"], select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--uabc-verde-claro);
+      border-radius: 5px;
+      font-size: 1rem;
+      margin-top: 5px;
+      transition: border-color 0.3s ease;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--uabc-verde);
+      outline: none;
+    }
+    
+    /* ===================== */
+    /* Botones                */
+    /* ===================== */
+    button, .boton-uabc {
+      display: inline-block;
+      padding: 10px 20px;
+      background: var(--uabc-amarillo);
+      border: none;
+      border-radius: 8px;
+      color: var(--uabc-verde);
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      text-align: center;
+    }
+    button:hover, .boton-uabc:hover {
+      background: var(--uabc-verde);
+      color: var(--uabc-blanco);
+    }
+    
+    /* ===================== */
+    /* Mensajes               */
+    /* ===================== */
+    #mensaje, .mensaje-feedback {
+      text-align: center;
+      padding: 10px;
+      margin-top: 15px;
+      border-radius: 5px;
+      display: none;
+      font-weight: 600;
+    }
+    .success {
+      background: #e6f4ea;
+      color: #2e7d32;
+      border: 1px solid #66bb6a;
+    }
+    .error {
+      background: #ffecec;
+      color: #c62828;
+      border: 1px solid #e57373;
+    }
+    
+    /* ===================== */
+    /* Loader                 */
+    /* ===================== */
+    .loader {
+      border: 4px solid var(--uabc-verde-claro);
+      border-top: 4px solid var(--uabc-amarillo);
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+      display: none;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* ===================== */
+    /* Oculto                 */
+    /* ===================== */
+    .oculto {
+      display: none !important;
+    }
+    
+    /* ===================== */
+    /* Botón menú             */
+    /* ===================== */
+    .menu-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: var(--uabc-verde);
+      cursor: pointer;
+    }
+    
+    /* ===================== */
+    /* Responsividad          */
+    /* ===================== */
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+      .container, .contenedor-principal {
+        padding: 15px;
+      }
+    }
+    </style>
+    

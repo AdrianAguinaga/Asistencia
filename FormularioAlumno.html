@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <base target="_top">
+  <?!= include("CSS"); ?>
+  <?!= include("Utils"); ?>
+</head>
+<body>
+  <div class="container">
+    <!-- Botón menú para estadísticas -->
+    <button class="menu-btn" id="btnMenu">☰</button>
+
+    <h2>📋 Registro de Asistencia</h2>
+
+    <!-- Selector de tipo de registro -->
+    <div class="form-group">
+      <label for="tipoUsuario">Tipo de Registro:</label>
+      <select id="tipoUsuario">
+        <option value="">Seleccione...</option>
+        <option value="alumno">Alumno</option>
+        <option value="invitado">Invitado</option>
+      </select>
+    </div>
+
+    <!-- Sección Alumnos -->
+    <div id="seccionAlumnos" class="oculto">
+      <form id="formAlumnos">
+        <div class="form-group">
+          <label for="selectorAlumnos">Seleccionar Alumno:</label>
+          <select id="selectorAlumnos">
+            <option value="">Cargando alumnos...</option>
+          </select>
+        </div>
+        <button type="submit" class="boton-uabc">Registrar Asistencia</button>
+      </form>
+    </div>
+
+    <!-- Sección Invitados -->
+    <div id="seccionInvitados" class="oculto">
+      <form id="formInvitados">
+        <div class="form-group">
+          <label for="visitorName">Nombre del Invitado:</label>
+          <input type="text" id="visitorName" required />
+        </div>
+        <div class="form-group">
+          <label for="visitorEmail">Correo del Invitado:</label>
+          <input type="email" id="visitorEmail" required />
+        </div>
+        <div class="form-group">
+          <label for="visitReason">Motivo de la Visita:</label>
+          <input type="text" id="visitReason" required />
+        </div>
+        <button type="submit" class="boton-uabc">Registrar Invitado</button>
+      </form>
+    </div>
+
+    <!-- Loader y mensaje feedback -->
+    <div class="loader"></div>
+    <div id="mensaje" class="mensaje-feedback"></div>
+  </div>
+
+  <script>
+    // Al cargar la página
+    window.onload = function() {
+      // Verificar conexión
+      google.script.run
+        .withSuccessHandler(() => {})
+        .withFailureHandler(err => mostrarMensaje("Error de conexión: " + err, "error"))
+        .ping();
+
+      // Cargar lista de alumnos
+      cargarAlumnos();
+
+      // Cambiar sección según tipo
+      document.getElementById('tipoUsuario').addEventListener('change', function() {
+        const esAlumno = this.value === 'alumno';
+        document.getElementById('seccionAlumnos').classList.toggle('oculto', !esAlumno);
+        document.getElementById('seccionInvitados').classList.toggle('oculto', esAlumno);
+      });
+
+      // Envío formulario alumnos
+      document.getElementById('formAlumnos').addEventListener('submit', function(e) {
+        e.preventDefault();
+        mostrarLoader();
+        const sel = document.getElementById('selectorAlumnos');
+        const matricula = sel.value;
+        if (!matricula) {
+          ocultarLoader();
+          mostrarMensaje('Selecciona un alumno', 'error');
+          return;
+        }
+        const nombre = sel.options[sel.selectedIndex].text;
+        google.script.run
+          .withSuccessHandler(res => {
+            ocultarLoader();
+            mostrarMensaje(res.message, res.success ? 'success' : 'error');
+            if (res.success) sel.value = '';
+          })
+          .withFailureHandler(err => {
+            ocultarLoader();
+            mostrarMensaje('Error al registrar asistencia: ' + err, 'error');
+          })
+          .registrarAsistencia(nombre, matricula, 'Presente', '');
+      });
+
+      // Envío formulario invitados
+      document.getElementById('formInvitados').addEventListener('submit', function(e) {
+        e.preventDefault();
+        mostrarLoader();
+        const nombre = document.getElementById('visitorName').value;
+        const correo = document.getElementById('visitorEmail').value;
+        const motivo = document.getElementById('visitReason').value;
+        if (!nombre || !correo || !motivo) {
+          ocultarLoader();
+          mostrarMensaje('Completa todos los campos de invitado', 'error');
+          return;
+        }
+        google.script.run
+          .withSuccessHandler(res => {
+            ocultarLoader();
+            mostrarMensaje(res.message, res.success ? 'success' : 'error');
+            if (res.success) document.getElementById('formInvitados').reset();
+          })
+          .withFailureHandler(err => {
+            ocultarLoader();
+            mostrarMensaje('Error al registrar invitado: ' + err, 'error');
+          })
+          .registrarVisitante(nombre, correo, motivo);
+      });
+
+      // Botón de menú para estadísticas: redirige a login
+      document.getElementById('btnMenu').addEventListener('click', function() {
+        mostrarLoader();
+        google.script.run
+          .withSuccessHandler(url => window.top.location.href = url)
+          .withFailureHandler(err => {
+            ocultarLoader();
+            mostrarMensaje('Error al cargar estadísticas: ' + err, 'error');
+          })
+          .obtenerUrlEstadisticas();
+      });
+    };
+
+    // Función para cargar alumnos
+    function cargarAlumnos() {
+      google.script.run
+        .withSuccessHandler(alumnos => {
+          const sel = document.getElementById('selectorAlumnos');
+          if (!alumnos.length) {
+            sel.innerHTML = '<option value="">No hay alumnos</option>';
+            return;
+          }
+          sel.innerHTML = '<option value="">Seleccione un alumno...</option>' +
+                          alumnos.map(a => `<option value="${a.matricula}">${a.nombre}</option>`).join('');
+        })
+        .withFailureHandler(err => mostrarMensaje('Error al cargar alumnos: ' + err, 'error'))
+        .obtenerListaAlumnos();
+    }
+  </script>
+</body>
+</html>

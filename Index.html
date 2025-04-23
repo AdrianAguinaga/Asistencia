@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <base target="_top">
+  <?!= include("CSS"); ?>
+  <?!= include("Utils"); ?>
+</head>
+<body>
+  <div class="container">
+    <!-- Botón menú para estadísticas -->
+    <button class="menu-btn" id="btnMenu">☰</button>
+
+    <h2>📋 Registro de Asistencia</h2>
+
+    <!-- Selector de tipo de registro -->
+    <div class="form-group">
+      <label for="tipoUsuario">Tipo de Registro:</label>
+      <select id="tipoUsuario">
+        <option value="">Seleccione...</option>
+        <option value="alumno">Alumno</option>
+        <option value="invitado">Invitado</option>
+      </select>
+    </div>
+
+    <!-- Sección Alumnos -->
+    <div id="seccionAlumnos" class="oculto">
+      <form id="formAlumnos">
+        <div class="form-group">
+          <label for="selectorAlumnos">Seleccionar Alumno:</label>
+          <select id="selectorAlumnos">
+            <option value="">Cargando alumnos...</option>
+          </select>
+        </div>
+        <button type="submit" class="boton-uabc">Registrar Asistencia</button>
+      </form>
+    </div>
+
+    <!-- Sección Invitados -->
+    <div id="seccionInvitados" class="oculto">
+      <form id="formInvitados">
+        <div class="form-group">
+          <label for="visitorName">Nombre del Invitado:</label>
+          <input type="text" id="visitorName" required />
+        </div>
+        <div class="form-group">
+          <label><input type="checkbox" id="noAlumno" /> No soy alumno</label>
+        </div>
+        <div class="form-group" id="grupoMatricula">
+          <label for="visitorMatricula">Matrícula:</label>
+          <input type="text" id="visitorMatricula" />
+        </div>
+        <div class="form-group">
+          <label for="visitorEmail">Correo del Invitado:</label>
+          <input type="email" id="visitorEmail" required />
+        </div>
+        <div class="form-group">
+          <label for="visitReason">Motivo de la Visita:</label>
+          <input type="text" id="visitReason" required />
+        </div>
+        <button type="submit" class="boton-uabc">Registrar Invitado</button>
+      </form>
+    </div>
+
+    <!-- Loader y mensaje feedback -->
+    <div class="loader"></div>
+    <div id="mensaje" class="mensaje-feedback"></div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      google.script.run
+        .withSuccessHandler(() => {})
+        .withFailureHandler(err => mostrarMensaje("Error de conexión: " + err, "error"))
+        .ping();
+
+      cargarAlumnos();
+
+      document.getElementById('tipoUsuario').addEventListener('change', function() {
+        const esAlumno = this.value === 'alumno';
+        document.getElementById('seccionAlumnos').classList.toggle('oculto', !esAlumno);
+        document.getElementById('seccionInvitados').classList.toggle('oculto', esAlumno);
+      });
+
+      // Toggle matrícula según checkbox
+      document.getElementById('noAlumno').addEventListener('change', function() {
+        document.getElementById('grupoMatricula').classList.toggle('oculto', this.checked);
+      });
+
+      document.getElementById('formAlumnos').addEventListener('submit', function(e) {
+        e.preventDefault();
+        mostrarLoader();
+        const sel = document.getElementById('selectorAlumnos');
+        const matricula = sel.value;
+        if (!matricula) {
+          ocultarLoader();
+          mostrarMensaje('Selecciona un alumno', 'error');
+          return;
+        }
+        const nombre = sel.options[sel.selectedIndex].text;
+        google.script.run
+          .withSuccessHandler(res => {
+            ocultarLoader();
+            mostrarMensaje(res.message, res.success ? 'success' : 'error');
+            if (res.success) sel.value = '';
+          })
+          .withFailureHandler(err => {
+            ocultarLoader();
+            mostrarMensaje('Error al registrar asistencia: ' + err, 'error');
+          })
+          .registrarAsistencia(nombre, matricula, 'Presente', '');
+      });
+
+      document.getElementById('formInvitados').addEventListener('submit', function(e) {
+        e.preventDefault();
+        mostrarLoader();
+        const nombre = document.getElementById('visitorName').value;
+        const correo = document.getElementById('visitorEmail').value;
+        const motivo = document.getElementById('visitReason').value;
+        const noAlumno = document.getElementById('noAlumno').checked;
+        let matricula = document.getElementById('visitorMatricula').value;
+        if (!nombre || !correo || !motivo || (!noAlumno && !matricula)) {
+          ocultarLoader();
+          mostrarMensaje('Completa todos los campos (o marca "No soy alumno").', 'error');
+          return;
+        }
+        // Si no es alumno, vaciamos matrícula
+        if (noAlumno) matricula = '';
+        google.script.run
+          .withSuccessHandler(res => {
+            ocultarLoader();
+            mostrarMensaje(res.message, res.success ? 'success' : 'error');
+            if (res.success) {
+              document.getElementById('formInvitados').reset();
+              document.getElementById('grupoMatricula').classList.remove('oculto');
+            }
+          })
+          .withFailureHandler(err => {
+            ocultarLoader();
+            mostrarMensaje('Error al registrar invitado: ' + err, 'error');
+          })
+          .registrarVisitante(nombre, correo, motivo, matricula);
+      });
+
+      document.getElementById('btnMenu').addEventListener('click', function() {
+        mostrarLoader();
+        google.script.run
+          .withSuccessHandler(url => window.top.location.href = url)
+          .withFailureHandler(err => {
+            ocultarLoader();
+            mostrarMensaje('Error al cargar estadísticas: ' + err, 'error');
+          })
+          .obtenerUrlEstadisticas();
+      });
+    };
+
+    function cargarAlumnos() {
+      google.script.run
+        .withSuccessHandler(alumnos => {
+          const sel = document.getElementById('selectorAlumnos');
+          if (!alumnos.length) {
+            sel.innerHTML = '<option value="">No hay alumnos</option>';
+            return;
+          }
+          sel.innerHTML = '<option value="">Seleccione un alumno...</option>' +
+                          alumnos.map(a => `<option value="${a.matricula}">${a.nombre}</option>`).join('');
+        })
+        .withFailureHandler(err => mostrarMensaje('Error al cargar alumnos: ' + err, 'error'))
+        .obtenerListaAlumnos();
+    }
+  </script>
+</body>
+</html>

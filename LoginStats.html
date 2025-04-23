@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <base target="_top">
+  <?!= include("CSS"); ?>
+  <?!= include("Utils"); ?>
+  <title>Acceso a Estadísticas</title>
+</head>
+<body>
+  <div class="container">
+    <h2>🔒 Acceso a Estadísticas</h2>
+
+    <? if (mensajeError) { ?>
+      <div class="mensaje-feedback error" style="display:block;"><?= mensajeError ?></div>
+    <? } ?>
+
+    <form id="formLogin" method="GET" action="<?= baseUrl ?>">
+      <input type="hidden" name="page" value="estadisticas" />
+      <div class="form-group">
+        <label for="pass">Contraseña:</label>
+        <input type="password" id="pass" name="pass" required />
+      </div>
+      <button type="submit" class="boton-uabc">Ingresar</button>
+    </form>
+  </div>
+
+  <script>
+    // Enfocar el campo de contraseña al cargar
+    document.getElementById('pass').focus();
+  </script>
+</body>
+</html>
