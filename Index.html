@@ -5,169 +5,39 @@
   <base target="_top">
   <?!= include("CSS"); ?>
   <?!= include("Utils"); ?>
+  <style>
+    .grid{display:grid;gap:20px;}@media(min-width:600px){.grid{grid-template-columns:repeat(3,1fr);}}
+    .card{padding:30px 25px;border:1px solid var(--uabc-verde-claro);border-radius:12px;text-align:center;cursor:pointer;transition:transform .25s,box-shadow .25s;}
+    .card:hover{transform:translateY(-4px);box-shadow:0 6px 16px rgba(0,0,0,.15);}
+    .card h3{margin:0 0 10px;color:var(--uabc-verde);} .card p{margin:0;color:var(--uabc-gris);font-size:.95rem;}
+  </style>
 </head>
 <body>
   <div class="container">
-    <!-- Botón menú para estadísticas -->
     <button class="menu-btn" id="btnMenu">☰</button>
+    <h2>LIDE · Registro de Asistencia</h2>
+    <p style="text-align:center;margin-top:-10px;margin-bottom:25px;">Selecciona el tipo de registro 👇</p>
 
-    <h2>📋 Registro de Asistencia</h2>
-
-    <!-- Selector de tipo de registro -->
-    <div class="form-group">
-      <label for="tipoUsuario">Tipo de Registro:</label>
-      <select id="tipoUsuario">
-        <option value="">Seleccione...</option>
-        <option value="alumno">Alumno</option>
-        <option value="invitado">Invitado</option>
-      </select>
+    <div class="grid">
+      <div class="card" id="cardAlumno"><h3>Alumno</h3><p>Registra tu asistencia con matrícula</p></div>
+      <div class="card" id="cardInvitado"><h3>Invitado</h3><p>Registra tu visita como externo</p></div>
+      <div class="card" id="cardGestion"><h3>Solicitar registro</h3><p>¿No apareces? Envía tu solicitud</p></div>
     </div>
 
-    <!-- Sección Alumnos -->
-    <div id="seccionAlumnos" class="oculto">
-      <form id="formAlumnos">
-        <div class="form-group">
-          <label for="selectorAlumnos">Seleccionar Alumno:</label>
-          <select id="selectorAlumnos">
-            <option value="">Cargando alumnos...</option>
-          </select>
-        </div>
-        <button type="submit" class="boton-uabc">Registrar Asistencia</button>
-      </form>
-    </div>
-
-    <!-- Sección Invitados -->
-    <div id="seccionInvitados" class="oculto">
-      <form id="formInvitados">
-        <div class="form-group">
-          <label for="visitorName">Nombre del Invitado:</label>
-          <input type="text" id="visitorName" required />
-        </div>
-        <div class="form-group">
-          <label><input type="checkbox" id="noAlumno" /> No soy alumno</label>
-        </div>
-        <div class="form-group" id="grupoMatricula">
-          <label for="visitorMatricula">Matrícula:</label>
-          <input type="text" id="visitorMatricula" />
-        </div>
-        <div class="form-group">
-          <label for="visitorEmail">Correo del Invitado:</label>
-          <input type="email" id="visitorEmail" required />
-        </div>
-        <div class="form-group">
-          <label for="visitReason">Motivo de la Visita:</label>
-          <input type="text" id="visitReason" required />
-        </div>
-        <button type="submit" class="boton-uabc">Registrar Invitado</button>
-      </form>
-    </div>
-
-    <!-- Loader y mensaje feedback -->
-    <div class="loader"></div>
-    <div id="mensaje" class="mensaje-feedback"></div>
+    <div class="loader"></div><div id="mensaje" class="mensaje-feedback"></div>
   </div>
 
   <script>
-    window.onload = function() {
-      google.script.run
-        .withSuccessHandler(() => {})
-        .withFailureHandler(err => mostrarMensaje("Error de conexión: " + err, "error"))
-        .ping();
-
-      cargarAlumnos();
-
-      document.getElementById('tipoUsuario').addEventListener('change', function() {
-        const esAlumno = this.value === 'alumno';
-        document.getElementById('seccionAlumnos').classList.toggle('oculto', !esAlumno);
-        document.getElementById('seccionInvitados').classList.toggle('oculto', esAlumno);
-      });
-
-      // Toggle matrícula según checkbox
-      document.getElementById('noAlumno').addEventListener('change', function() {
-        document.getElementById('grupoMatricula').classList.toggle('oculto', this.checked);
-      });
-
-      document.getElementById('formAlumnos').addEventListener('submit', function(e) {
-        e.preventDefault();
-        mostrarLoader();
-        const sel = document.getElementById('selectorAlumnos');
-        const matricula = sel.value;
-        if (!matricula) {
-          ocultarLoader();
-          mostrarMensaje('Selecciona un alumno', 'error');
-          return;
-        }
-        const nombre = sel.options[sel.selectedIndex].text;
-        google.script.run
-          .withSuccessHandler(res => {
-            ocultarLoader();
-            mostrarMensaje(res.message, res.success ? 'success' : 'error');
-            if (res.success) sel.value = '';
-          })
-          .withFailureHandler(err => {
-            ocultarLoader();
-            mostrarMensaje('Error al registrar asistencia: ' + err, 'error');
-          })
-          .registrarAsistencia(nombre, matricula, 'Presente', '');
-      });
-
-      document.getElementById('formInvitados').addEventListener('submit', function(e) {
-        e.preventDefault();
-        mostrarLoader();
-        const nombre = document.getElementById('visitorName').value;
-        const correo = document.getElementById('visitorEmail').value;
-        const motivo = document.getElementById('visitReason').value;
-        const noAlumno = document.getElementById('noAlumno').checked;
-        let matricula = document.getElementById('visitorMatricula').value;
-        if (!nombre || !correo || !motivo || (!noAlumno && !matricula)) {
-          ocultarLoader();
-          mostrarMensaje('Completa todos los campos (o marca "No soy alumno").', 'error');
-          return;
-        }
-        // Si no es alumno, vaciamos matrícula
-        if (noAlumno) matricula = '';
-        google.script.run
-          .withSuccessHandler(res => {
-            ocultarLoader();
-            mostrarMensaje(res.message, res.success ? 'success' : 'error');
-            if (res.success) {
-              document.getElementById('formInvitados').reset();
-              document.getElementById('grupoMatricula').classList.remove('oculto');
-            }
-          })
-          .withFailureHandler(err => {
-            ocultarLoader();
-            mostrarMensaje('Error al registrar invitado: ' + err, 'error');
-          })
-          .registrarVisitante(nombre, correo, motivo, matricula);
-      });
-
-      document.getElementById('btnMenu').addEventListener('click', function() {
-        mostrarLoader();
-        google.script.run
-          .withSuccessHandler(url => window.top.location.href = url)
-          .withFailureHandler(err => {
-            ocultarLoader();
-            mostrarMensaje('Error al cargar estadísticas: ' + err, 'error');
-          })
-          .obtenerUrlEstadisticas();
-      });
+    const BASE='<?= baseUrl ?>';
+    document.getElementById('cardAlumno').onclick   = ()=>location.href=BASE+'?page=alumno';
+    document.getElementById('cardInvitado').onclick = ()=>location.href=BASE+'?page=invitado';
+    document.getElementById('cardGestion').onclick  = ()=>location.href=BASE+'?page=solicitar';
+    document.getElementById('btnMenu').onclick = ()=>{
+      mostrarLoader();
+      google.script.run.withSuccessHandler(url=>location.href=url)
+        .withFailureHandler(e=>{ocultarLoader();mostrarMensaje('Error:'+e,'error');})
+        .obtenerUrlEstadisticas();
     };
-
-    function cargarAlumnos() {
-      google.script.run
-        .withSuccessHandler(alumnos => {
-          const sel = document.getElementById('selectorAlumnos');
-          if (!alumnos.length) {
-            sel.innerHTML = '<option value="">No hay alumnos</option>';
-            return;
-          }
-          sel.innerHTML = '<option value="">Seleccione un alumno...</option>' +
-                          alumnos.map(a => `<option value="${a.matricula}">${a.nombre}</option>`).join('');
-        })
-        .withFailureHandler(err => mostrarMensaje('Error al cargar alumnos: ' + err, 'error'))
-        .obtenerListaAlumnos();
-    }
   </script>
 </body>
 </html>

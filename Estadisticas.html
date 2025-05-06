@@ -9,6 +9,8 @@
   <title>Estadísticas de Asistencia</title>
 </head>
 <body>
+  <button class="menu-btn" id="btnHome">🏠</button>
+
   <div class="container">
     <h2>📊 Estadísticas de Asistencia</h2>
 
@@ -101,6 +103,8 @@
       document.getElementById('resumenHistorico').innerHTML=
         `Total: <strong>${total}</strong><br>Promedio: <strong>${prom}</strong><br>Día máx.: <strong>${diaMax}</strong> (${max})`;
     }
+    document.getElementById('btnHome').onclick = ()=>location.href = '<?= baseUrl ?>';
+
 
     // Inicia proceso al cargar
     window.onload = iniciar;

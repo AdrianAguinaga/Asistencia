@@ -132,6 +132,7 @@
       animation: spin 1s linear infinite;
       margin: 20px auto;
       display: none;
+      backdrop-filter: blur(2px);
     }
     @keyframes spin {
       to { transform: rotate(360deg); }
@@ -161,13 +162,64 @@
     /* ===================== */
     /* Responsividad          */
     /* ===================== */
-    @media (max-width: 600px) {
-      body {
-        padding: 10px;
-      }
-      .container, .contenedor-principal {
-        padding: 15px;
-      }
-    }
+    /* ------------------------------- */
+/* Extra-pequeños: móviles muy pequeños (portrait phones) */
+/* ≤ 575.98px */
+/* ------------------------------- */
+@media (max-width: 575.98px) { 
+  /* estilos para móviles muy pequeños */
+}
+
+/* ------------------------------- */
+/* Pequeños: móviles (landscape phones) */
+/* ≥ 576px y ≤ 767.98px */
+/* ------------------------------- */
+@media (min-width: 576px) and (max-width: 767.98px) { 
+  /* estilos para móviles estándar */
+}
+
+/* ------------------------------- */
+/* Medianos: tablets (portrait) */
+/* ≥ 768px y ≤ 991.98px */
+/* ------------------------------- */
+@media (min-width: 768px) and (max-width: 991.98px) { 
+  /* estilos para tablets en vertical */
+}
+
+/* ------------------------------- */
+/* Grandes: tablets (landscape) y notebooks pequeñas */
+/* ≥ 992px y ≤ 1199.98px */
+/* ------------------------------- */
+@media (min-width: 992px) and (max-width: 1199.98px) { 
+  /* estilos para tablets en horizontal y notebooks pequeñas */
+}
+
+/* ------------------------------- */
+/* Extra-grandes: escritorios medianos */
+/* ≥ 1200px y ≤ 1399.98px */
+/* ------------------------------- */
+@media (min-width: 1200px) and (max-width: 1399.98px) { 
+  /* estilos para escritorios medianos */
+}
+
+/* ------------------------------- */
+/* XXL: escritorios grandes y pantallas muy anchas */
+/* ≥ 1400px */
+/* ------------------------------- */
+@media (min-width: 1400px) { 
+  /* estilos para pantallas muy grandes */
+}
+/* Pantallas ≤ 576 px */
+@media (max-width: 576px) {
+  .contenedor-principal { padding: 12px; }
+  h1, h2 { font-size: 1.4rem; }
+  table { font-size: 0.85rem; }
+}
+
+/* Pantallas ≥ 1200 px */
+@media (min-width: 1200px) {
+  .contenedor-principal { max-width: 1000px; margin: auto; }
+}
+
     </style>
     

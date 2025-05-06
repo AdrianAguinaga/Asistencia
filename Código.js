@@ -1,178 +1,253 @@
-// Código.js
+// === Codigo.gs – backend unificado v3 ========================
+// © 2025 UABC · LIDE
+// -------------------------------------------------------------
 
-/**
- * Manejo de páginas: Index y Estadísticas con autenticación.
- */
+/*************************
+ *  0.  HTML  include()  *
+ *************************/
+function include(fileName) {
+  return HtmlService.createHtmlOutputFromFile(fileName).getContent();
+}
+
+/****************
+ *  1. Router   *
+ ****************/
 function doGet(e) {
-  const params = e.parameter || {};
-  const page = (params.page || 'index').toLowerCase();
-  let template;
+  const page = e?.parameter?.page || 'index';
+  const tpl  = chooseTpl_(page);
+  tpl.baseUrl = ScriptApp.getService().getUrl();        // → para todas las vistas
+  return tpl.evaluate()
+            .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+            .addMetaTag('viewport','width=device-width, initial-scale=1');
+}
 
+function chooseTpl_(page) {
   switch (page) {
-    case 'estadisticas':
-      // Validación de contraseña de administrador
-      const pass = params.pass || '';
-      if (!validarAccesoAdministrador(pass)) {
-        // Mostrar pantalla de login si no autenticado
-        template = HtmlService.createTemplateFromFile('LoginStats');
-        template.mensajeError = pass ? 'Contraseña incorrecta.' : '';
-        template.baseUrl = ScriptApp.getService().getUrl();
-      } else {
-        // Ya autenticado, carga estadísticas
-        template = HtmlService.createTemplateFromFile('Estadisticas');
-      }
-      break;
-
-    default:
-      template = HtmlService.createTemplateFromFile('Index');
+    case 'alumno':     return HtmlService.createTemplateFromFile('FormularioAlumno');
+    case 'invitado':   return HtmlService.createTemplateFromFile('FormularioInvitado');
+    case 'solicitar':  return HtmlService.createTemplateFromFile('SolicitudRegistro');
+    case 'revisar': {
+      const t = HtmlService.createTemplateFromFile('RevisarSolicitudes');
+      t.solicitudes = getSolicitudesPending();
+      return t;
+    }
+    case 'estadisticas': return HtmlService.createTemplateFromFile('Estadisticas');
+    default:              return HtmlService.createTemplateFromFile('Index');
   }
-
-  return template.evaluate()
-    .setTitle('Registro de Asistencia')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-/**
- * Incluir fragmentos HTML.
- */
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+/*****************************
+ *  2.  Short server helpers *
+ *****************************/
+function ping()                       { return true; }
+function obtenerUrlEstadisticas()     { return ScriptApp.getService().getUrl() + '?page=estadisticas'; }
+function esUsuarioAdministrador() {
+  const admins = PropertiesService.getScriptProperties().getProperty('ADMINS')?.split(',') || [];
+  return admins.includes(Session.getActiveUser().getEmail());
 }
 
-/**
- * Función ping para verificar conexión.
- */
-function ping() {
-  return 'pong';
-}
-
-/**
- * Retorna URL de estadísticas.
- */
-function obtenerUrlEstadisticas() {
-  return ScriptApp.getService().getUrl() + '?page=estadisticas';
-}
-
-/**
- * Autenticación de administrador.
- * La contraseña se almacena en las propiedades del script como 'ADMIN_PASS'.
- */
-function validarAccesoAdministrador(passIngresado) {
-  const props = PropertiesService.getScriptProperties();
-  const passReal = props.getProperty('ADMIN_PASS');
-  return passIngresado === passReal;
-}
-
-/**
- * Configuración inicial de hojas (opcional).
- */
-function configuracionInicial() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  // ... lógica de configuración (Alumnos, Asistencia Detallada, Visitantes)
-}
-
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu('Asistencia')
-    .addItem('Configuración Inicial','configuracionInicial')
-    .addToUi();
-}
-
-/**
- * Obtiene la lista de alumnos para el dropdown.
- */
-function obtenerListaAlumnos() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja = ss.getSheetByName('Alumnos');
-  if (!hoja) return [];
-  const datos = hoja.getDataRange().getValues().slice(1);
-  return datos.map(r => ({ nombre: r[0], matricula: r[1], grupo: r[2], estado: r[3] }));
-}
-
-/**
- * Registra asistencia de alumno.
- */
+/********************************
+ *  3.  Registro de asistencia  *
+ ********************************/
 function registrarAsistencia(nombre, matricula, estado, observaciones) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let hoja = ss.getSheetByName('Asistencia Detallada');
-  if (!hoja) {
-    hoja = ss.insertSheet('Asistencia Detallada');
-    hoja.appendRow(['Fecha','Hora','Nombre','Matrícula','Estado','Observaciones','Grupo']);
-  }
-  const fecha = new Date();
-  const alumno = obtenerListaAlumnos().find(a => a.matricula === matricula);
-  const grupo = alumno ? alumno.grupo : 'Sin grupo';
-  hoja.appendRow([
-    Utilities.formatDate(fecha, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
-    Utilities.formatDate(fecha, Session.getScriptTimeZone(), 'HH:mm:ss'),
-    nombre, matricula, estado, observaciones||'', grupo
-  ]);
-  return { success: true, message: '✅ Asistencia registrada correctamente.' };
+  return appendAsistenciaRow_(nombre, matricula, estado, observaciones, 'Alumno');
 }
 
-// **
-//  * Registra invitado, recibe matrícula opcional.
-//  */
+/********************************
+ *  Visitantes                   *
+ ********************************/
+
+const SH_VIS = 'Visitantes';
+
 function registrarVisitante(nombre, correo, motivo, matricula) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let hoja = ss.getSheetByName('Visitantes');
+  try {
+    const sh = ensureSheet_(SH_VIS,
+      ['Fecha','Hora','Nombre','Correo','Motivo','Matrícula']);
+    const fecha = new Date();
+    sh.appendRow([
+      Utilities.formatDate(fecha, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+      Utilities.formatDate(fecha, Session.getScriptTimeZone(), 'HH:mm:ss'),
+      nombre,
+      correo,
+      motivo,
+      matricula || ''
+    ]);
+    return { success:true, message:'✅ Visitante registrado correctamente' };
+  } catch (err) {
+    return { success:false, message:err.toString() };
+  }
+}
 
-  // Crear hoja si no existe o está vacía, con encabezado actualizado
-  if (!hoja) {
-    hoja = ss.insertSheet('Visitantes');
-    hoja.appendRow(['Fecha','Hora','Nombre','Matrícula','Correo','Motivo']);
-  } else if (hoja.getLastRow() === 0) {
-    hoja.appendRow(['Fecha','Hora','Nombre','Matrícula','Correo','Motivo']);
+
+function appendAsistenciaRow_(nombre, matricula, estado, observaciones, tipo, correo) {
+  try {
+    const ss  = SpreadsheetApp.getActive();
+    const sh  = ss.getSheetByName('Asistencia Detallada') || ss.insertSheet('Asistencia Detallada');
+    if (sh.getLastRow() === 0) sh.appendRow(
+      ['Fecha','Hora','Nombre','Matrícula','Estado','Observaciones','Tipo','Correo']
+    );
+
+    const fecha = new Date();
+    sh.appendRow([
+      Utilities.formatDate(fecha, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+      Utilities.formatDate(fecha, Session.getScriptTimeZone(), 'HH:mm:ss'),
+      nombre,
+      matricula,
+      estado,
+      observaciones || '',
+      tipo,
+      correo || ''
+    ]);
+
+    return { success:true, message:'✅ Registro guardado correctamente' };
+  } catch (err) {
+    return { success:false, message:err.toString() };
+  }
+}
+
+/********************************
+ *  4.  Módulo Solicitudes      *
+ ********************************/
+const SH_SOL = 'Solicitudes';
+
+function submitSolicitud(data) {
+  if (!data?.nombre || !data?.email)
+    return { success:false, message:'Datos incompletos' };
+
+  const sh  = ensureSheet_(SH_SOL, ['idx','timestamp','nombre','email','grupo','matricula','estado']);
+  const idx = Utilities.getUuid();
+  sh.appendRow([idx, new Date(), data.nombre, data.email, data.grupo||'', data.matricula||'', 'pendiente']);
+  return { success:true };
+}
+
+function getSolicitudesPending() {
+  const sh = SpreadsheetApp.getActive().getSheetByName(SH_SOL);
+  if (!sh) return [];
+  return sh.getDataRange().getValues().slice(1)
+           .filter(r => r[6] === 'pendiente')
+           .map(r => ({ idx:r[0], timestamp:r[1], nombre:r[2], email:r[3], grupo:r[4], matricula:r[5] }));
+}
+
+function processSolicitud(idx, accion) {
+  if (!['aceptar','rechazar'].includes(accion)) return { success:false, message:'Acción inválida' };
+  const sh = SpreadsheetApp.getActive().getSheetByName(SH_SOL);
+  if (!sh) return { success:false, message:'Hoja no encontrada' };
+  const data = sh.getDataRange().getValues();
+  const row  = data.findIndex(r => r[0] == idx);
+  if (row < 1) return { success:false, message:'ID inexistente' };
+  sh.getRange(row+1,7).setValue(accion);
+  return { success:true };
+}
+
+/************************************
+ *  5.  Estadísticas completas v2   *
+ ************************************/
+function obtenerEstadisticasCompletas() {
+  const sh = SpreadsheetApp.getActive().getSheetByName('Resumen Asistencia');
+
+  // 1) Si la hoja existe y tiene datos, leemos de ahí
+  if (sh && sh.getLastRow() > 1) {
+    const rows = sh.getDataRange().getValues().slice(1)
+      .map(r => ({ fecha:r[0], total:Number(r[1])||0 }))
+      .sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+
+    const hoy   = new Date();
+    const hace7 = new Date(hoy); hace7.setDate(hoy.getDate() - 6);
+
+    return {
+      semana:    rows.filter(r => new Date(r.fecha) >= hace7),
+      historico: rows
+    };
   }
 
-  const fecha = new Date();
-  hoja.appendRow([
-    Utilities.formatDate(fecha, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
-    Utilities.formatDate(fecha, Session.getScriptTimeZone(), 'HH:mm:ss'),
-    nombre,
-    matricula || '',
-    correo,
-    motivo
-  ]);
-
-  return { success: true, message: '✅ Invitado registrado correctamente.' };
+  // 2) Si no existe o está vacía, generamos al vuelo
+  const provisional = buildResumenFromSources_();    // ← helper nuevo
+  return {
+    semana:    provisional.slice(-7),
+    historico: provisional
+  };
 }
 
-
-/**
- * Estadísticas: última semana e histórico.
- */
-function obtenerAsistenciaUltimaSemana() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja = ss.getSheetByName('Asistencia Detallada');
-  if (!hoja) return [];
-  const data = hoja.getDataRange().getValues();
-  const hoy = new Date(), hace7 = new Date(hoy.getTime() - 6*24*60*60*1000);
+/* ------------------------------------------------------- *
+ *  Helper: reconstruye array  [{fecha:'yyyy-MM-dd',total}] *
+ *  combinando Asistencia Detallada + Visitantes            *
+ * ------------------------------------------------------- */
+function buildResumenFromSources_() {
+  const ss = SpreadsheetApp.getActive();
+  const srcSheets = ['Asistencia Detallada', 'Visitantes'];
   const map = {};
-  data.slice(1).forEach(r => {
-    const fecha = r[0] instanceof Date ? Utilities.formatDate(r[0], Session.getScriptTimeZone(), 'yyyy-MM-dd') : r[0];
-    const objFecha = new Date(fecha);
-    if (objFecha >= hace7 && objFecha <= hoy) map[fecha] = (map[fecha]||0)+1;
+
+  srcSheets.forEach(name => {
+    const s = ss.getSheetByName(name);
+    if (!s || s.getLastRow() < 2) return;
+
+    const data = s.getDataRange().getValues().slice(1);
+    data.forEach(row => {
+      const fecha = row[0];                              // col A (Fecha)
+      if (!fecha) return;
+      const key = Utilities.formatDate(new Date(fecha), ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+      map[key] = (map[key] || 0) + 1;
+    });
   });
-  return Object.keys(map).sort().map(f => ({ fecha: f, total: map[f] }));
+
+  return Object.keys(map).sort().map(k => ({ fecha:k, total:map[k] }));
+}
+/* -------------------------------------------------- *
+ *  Actualiza (o crea) 1 fila en “Resumen Asistencia” *
+ *  para la fecha dada                                *
+ * -------------------------------------------------- */
+function updateResumenAsistencia_(fechaObj){
+  const ss = SpreadsheetApp.getActive();
+  const sh = ensureSheet_('Resumen Asistencia',
+    ['Fecha','Total Alumnos','Presentes','Ausentes','Tarde','Visitantes']);
+
+  const fecha = Utilities.formatDate(fechaObj, ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+  const rows  = sh.getDataRange().getValues();
+  let rowIdx  = rows.findIndex((r,i)=> i>0 && r[0] && Utilities.formatDate(r[0], ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd') === fecha);
+
+  if (rowIdx === -1) { // nueva fila
+    sh.appendRow([fecha,1]);        // pondremos los demás luego
+    rowIdx = sh.getLastRow() - 1;
+  } else {
+    sh.getRange(rowIdx+1,2).setValue( Number(rows[rowIdx][1]||0) + 1 ); // ++ total
+  }
 }
 
-function obtenerAsistenciaHistorica() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja = ss.getSheetByName('Asistencia Detallada');
-  if (!hoja) return [];
-  const data = hoja.getDataRange().getValues();
-  const map = {};
-  data.slice(1).forEach(r => {
-    const fecha = r[0] instanceof Date ? Utilities.formatDate(r[0], Session.getScriptTimeZone(), 'yyyy-MM-dd') : r[0];
-    map[fecha] = (map[fecha]||0)+1;
-  });
-  return Object.keys(map).sort().map(f => ({ fecha: f, total: map[f] }));
+/*******************************************************
+ *  Inserta al alumno si NO existe; si existe, actualiza
+ *******************************************************/
+function addOrUpdateAlumno_({nombre, matricula, grupo}) {
+  try {
+    const sh = ensureSheet_('Alumnos',
+      ['Nombre','Matrícula','Grupo','Estado']);
+
+    // Buscar por matrícula
+    const mats = sh.getRange(2,2,Math.max(sh.getLastRow()-1,0),1).getValues().flat();
+    const idx  = mats.findIndex(m => String(m) === String(matricula));
+
+    if (idx === -1) {
+      // 🔹 Nuevo alumno
+      sh.appendRow([nombre, matricula, grupo || '', 'Activo']);
+    } else {
+      // 🔹 Actualiza datos (nombre / grupo) manteniendo la fila
+      const row = idx + 2;
+      sh.getRange(row, 1, 1, 3)
+        .setValues([[nombre, matricula, grupo || '']]);
+    }
+    return { success:true };
+  } catch (err) {
+    return { success:false, message:'Error al guardar en Alumnos: '+err };
+  }
 }
 
-/**
- * Devuelve ambas estadísticas.
- */
-function obtenerEstadisticasCompletas() {
-  return { semana: obtenerAsistenciaUltimaSemana(), historico: obtenerAsistenciaHistorica() };
+
+/********************************
+ *  6.  Utilidad interno        *
+ ********************************/
+function ensureSheet_(name, headers){
+  const ss = SpreadsheetApp.getActive();
+  let sh   = ss.getSheetByName(name);
+  if (!sh){ sh = ss.insertSheet(name); sh.appendRow(headers); }
+  if (sh.getLastRow() === 0) sh.appendRow(headers);
+  return sh;
 }

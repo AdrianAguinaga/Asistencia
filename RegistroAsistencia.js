@@ -102,4 +102,6 @@ function actualizarResumenAsistencia() {
   } catch (error) {
     Logger.log("Error en actualizarResumenAsistencia: " + error.toString());
   }
+  updateResumenAsistencia_(fecha);   // ← nueva llamada
+
 }

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <base target="_top">
+  <?!= include("CSS"); ?>
+  <?!= include("Utils"); ?>
+
+  <style>
+    .card{
+      padding:30px 25px;border:1px solid var(--uabc-verde-claro);border-radius:12px;
+      background:var(--uabc-blanco);box-shadow:0 4px 10px rgba(0,0,0,.1);
+      max-width:500px;margin:auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button class="menu-btn" id="btnHome">🏠</button>
+
+    <h2>📋 Registro de Asistencia – Invitados</h2>
+
+    <div class="card">
+      <form id="formInvitados">
+        <div class="form-group">
+          <label>Nombre completo:</label>
+          <input type="text" id="visitorName" required>
+        </div>
+        <div class="form-group">
+          <label>Correo electrónico:</label>
+          <input type="email" id="visitorEmail" required>
+        </div>
+        <div class="form-group">
+          <label>Motivo de la visita:</label>
+          <input type="text" id="visitReason" required>
+        </div>
+        <button type="submit" class="boton-uabc" style="width:100%;">Registrar Invitado</button>
+      </form>
+    </div>
+
+    <div class="loader"></div>
+    <div id="mensaje" class="mensaje-feedback"></div>
+  </div>
+
+  <script>
+    initHomeBtn('<?= baseUrl ?>');
+
+    document.getElementById('formInvitados')
+            .addEventListener('submit', e=>{
+      e.preventDefault(); mostrarLoader();
+      const nombre = visitorName.value.trim(),
+            correo = visitorEmail.value.trim(),
+            motivo = visitReason.value.trim();
+      if(!nombre||!correo||!motivo){
+        ocultarLoader(); mostrarMensaje('Completa todos los campos','error'); return;
+      }
+      google.script.run
+        .withSuccessHandler(r=>{ ocultarLoader(); mostrarMensaje(r.message,r.success?'success':'error'); if(r.success) e.target.reset(); })
+        .withFailureHandler(err=>{ ocultarLoader(); mostrarMensaje('Error:'+err,'error'); })
+        .registrarVisitante(nombre,correo,motivo,'');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= include('CSS') ?>
+  <?!= include('Utils') ?>
+</head>
+<body>
+  <div class="contenedor-principal">
+    <button class="menu-btn" id="btnHome">🏠</button>
+
+    <h2>Solicitar Registro</h2>
+
+    <!-- Tarjeta visual para mantener coherencia -->
+    <div class="card" style="max-width:500px;margin:auto;">
+      <form id="form-solicitud">
+        <label>Nombre completo:</label>
+        <input type="text"   id="nombre"    required>
+
+        <label>Correo electrónico:</label>
+        <input type="email" id="email"    required>
+
+        <label>Grupo:</label>
+        <input type="text"   id="grupo">
+
+        <label>Matrícula:</label>
+        <input type="text"   id="matricula">
+
+        <button type="submit" class="boton-uabc" style="width:100%;margin-top:15px;">Enviar Solicitud</button>
+      </form>
+    </div>
+
+    <div class="loader"></div>
+    <div id="mensaje" class="mensaje-feedback"></div>
+  </div>
+
+  <script>
+   initHomeBtn('<?= baseUrl ?>');
+
+    // Envío con confirmación correcta
+    document.getElementById('form-solicitud')
+            .addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const data = {
+        nombre:    document.getElementById('nombre').value.trim(),
+        email:     document.getElementById('email').value.trim(),
+        grupo:     document.getElementById('grupo').value.trim(),
+        matricula: document.getElementById('matricula').value.trim()
+      };
+
+      if (!data.nombre || !data.email) {
+        mostrarMensaje('Faltan campos obligatorios', 'error');
+        return;
+      }
+
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(res => {
+          ocultarLoader();
+          if (res.success) {
+            mostrarMensaje('✅ Solicitud enviada correctamente', 'success');
+            e.target.reset();
+          } else {
+            mostrarMensaje('Error: ' + res.message, 'error');
+          }
+        })
+        .withFailureHandler(err => {
+          ocultarLoader();
+          mostrarMensaje('Error: ' + err, 'error');
+        })
+        .submitSolicitud(data);        // ← llamada encadenada con handlers
+    });
+  </script>
+</body>
+</html>

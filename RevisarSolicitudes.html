@@ -1,0 +1,65 @@
+<!DOCTYPE html><html><head>
+  <base target="_top"><?!= include('CSS') ?><?!= include('Utils') ?>
+</head><body>
+  <div class="contenedor-principal">
+    <button class="menu-btn" id="btnHome">🏠</button>
+    <h2>Revisión de solicitudes de registro</h2>
+
+    <table class="tabla-uabc">
+      <thead><tr><th>Fecha</th><th>Nombre</th><th>Email</th><th style="text-align:center">Acción</th></tr></thead>
+      <tbody id="solicitudes-body"></tbody>
+    </table>
+
+    <div class="loader"></div><div id="mensaje" class="mensaje-feedback"></div>
+  </div>
+
+<script>
+ initHomeBtn('<?= baseUrl ?>');
+
+
+  const solicitudes = <?= JSON.stringify(solicitudes).replace(/</g,'\\u003c') ?>;
+  const tbody=document.getElementById('solicitudes-body');
+  solicitudes.forEach(s=>{
+    const tr=document.createElement('tr'); tr.id='row-'+s.idx;
+    tr.innerHTML=`<td>${new Date(s.timestamp).toLocaleDateString()}</td>
+                  <td>${s.nombre}</td><td>${s.email}</td>
+                  <td class=\"acciones\"><button onclick=\"procesar(${s.idx},'aceptar')\">Aceptar</button>
+                      <button onclick=\"procesar(${s.idx},'rechazar')\">Rechazar</button></td>`;
+    tbody.appendChild(tr);
+  });
+  function processSolicitud(idx, accion) {
+  if (!['aceptar', 'rechazar'].includes(accion))
+    return { success:false, message:'Acción inválida' };
+
+  const ss = SpreadsheetApp.getActive();
+  const sh = ss.getSheetByName(SH_SOL);
+  if (!sh) return { success:false, message:'Hoja Solicitudes no encontrada' };
+
+  // Localiza la fila
+  const data = sh.getDataRange().getValues();
+  const row  = data.findIndex(r => r[0] == idx);
+  if (row < 1) return { success:false, message:'ID inexistente' };
+
+  // Actualiza estado
+  sh.getRange(row + 1, 7).setValue(accion);
+
+  // ➕ Si se aceptó, inserta (o actualiza) el alumno
+  if (accion === 'aceptar') {
+    const registro = {
+      nombre:    data[row][2],
+      email:     data[row][3],
+      grupo:     data[row][4],
+      matricula: data[row][5]
+    };
+    const res = addOrUpdateAlumno_(registro);
+    if (!res.success) return res;           // Propaga error si algo falló
+  }
+  return { success:true };
+}
+
+
+
+  updateResumenAsistencia_(fecha);   // ← nueva llamada
+
+</script>
+</body></html>

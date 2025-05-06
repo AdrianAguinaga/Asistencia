@@ -1,5 +1,10 @@
 <!-- Utils.html -->
 <script>
+
+function initHomeBtn(baseUrl){
+    const home = document.getElementById('btnHome');
+    if(home) home.addEventListener('click', ()=> window.top.location.href = baseUrl);
+  }
     /** Mostrar feedback de éxito o error */
     function mostrarMensaje(mensaje, tipo) {
       const div = document.getElementById('mensaje') || document.querySelector('.mensaje-feedback');
